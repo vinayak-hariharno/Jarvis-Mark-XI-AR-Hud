@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JARVIS MARK XI - LIVE AR HUD</title>
+    <style>
+        :root { --jarvis-cyan: #00e5ff; --glass: rgba(0, 229, 255, 0.1); }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Orbitron', sans-serif; color: var(--jarvis-cyan); }
+        
+        /* THE AR STACK */
+        #ar-viewport { position: fixed; inset: 0; transform: scaleX(-1); z-index: 1; }
+        
+        /* 1. Background Video */
+        #input_video { 
+            position: absolute; inset: 0; width: 100vw; height: 100vh; 
+            object-fit: cover; 
+        }
+
+        /* 2. 2D Skeleton & Pointer Layer */
+        #overlay_canvas { 
+            position: absolute; inset: 0; width: 100vw; height: 100vh; 
+            z-index: 10; pointer-events: none; 
+        }
+
+        /* 3. 3D Object Layer (handled in JS) */
+        
+        /* 4. HUD UI Elements */
+        #hud-ui { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+        .glass-panel { 
+            position: absolute; background: var(--glass); backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 229, 255, 0.3); padding: 15px; border-radius: 4px;
+        }
+        #status-panel { top: 30px; left: 30px; border-left: 5px solid var(--jarvis-cyan); }
+        #toggle-btn { 
+            bottom: 40px; left: 50%; transform: translateX(-50%);
+            padding: 15px 40px; border: 2px solid var(--jarvis-cyan);
+            pointer-events: auto; cursor: pointer; transition: 0.3s;
+        }
+        .btn-active { background: var(--jarvis-cyan); color: #000; box-shadow: 0 0 30px var(--jarvis-cyan); }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="ar-viewport">
+        <video id="input_video" autoplay playsinline></video>
+        <canvas id="overlay_canvas"></canvas>
+    </div>
+
+    <div id="hud-ui">
+        <div id="status-panel" class="glass-panel">
+            <div style="font-size: 9px; opacity: 0.7;">AR_SYSTEM_ACTIVE</div>
+            <div id="action-text" style="font-size: 16px; font-weight: bold;">LINKED</div>
+        </div>
+        <div id="toggle-btn" class="glass-panel">CHANGE ENERGY STATE</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+    <script>
+        // --- 1. THREE.JS AR SETUP ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.domElement.style.position = 'fixed';
+        renderer.domElement.style.top = '0';
+        renderer.domElement.style.zIndex = '5'; // Between Video and Skeleton
+        document.body.appendChild(renderer.domElement);
+
+        // THE CORE OBJECT
+        const group = new THREE.Group();
+        const core = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(1.2, 1),
+            new THREE.MeshBasicMaterial({ color: 0x00e5ff, wireframe: true })
+        );
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(1.8, 0.02, 16, 100),
+            new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.4 })
+        );
+        group.add(core, ring);
+        scene.add(group);
+        camera.position.z = 8;
+
+        // --- 2. INTERACTION & TRACKING ---
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('overlay_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const actionText = document.getElementById('action-text');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        let sPos = new THREE.Vector3(0, 0, 0);
+        let sScale = 1;
+        let cooldown = 0;
+
+        function onResults(results) {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const hands = results.multiHandLandmarks;
+                
+                // Draw Skeletons
+                for (const hand of hands) {
+                    drawConnectors(canvasCtx, hand, HAND_CONNECTIONS, {color: '#00e5ff', lineWidth: 2});
+                    drawLandmarks(canvasCtx, hand, {color: '#fff', radius: 1});
+                }
+
+                const primary = hands[0];
+                const thumb = primary[4];
+                const index = primary[8];
+                const pinchPoint = { x: (thumb.x + index.x)/2, y: (thumb.y + index.y)/2 };
+                const isPinching = Math.hypot(thumb.x - index.x, thumb.y - index.y) < 0.05;
+
+                // MIRROR-ALIGNED MAPPING
+                const tx = (0.5 - pinchPoint.x) * 16; 
+                const ty = (0.5 - pinchPoint.y) * 12;
+
+                if (isPinching) {
+                    sPos.lerp(new THREE.Vector3(tx, ty, 0), 0.2);
+                    group.position.copy(sPos);
+                    actionText.innerText = "OBJECT_TETHERED";
+
+                    // Button Logic (Mirrored Space)
+                    const ptrX = (1 - pinchPoint.x) * window.innerWidth;
+                    const ptrY = pinchPoint.y * window.innerHeight;
+                    const rect = toggleBtn.getBoundingClientRect();
+
+                    if (ptrX > rect.left && ptrX < rect.right && ptrY > rect.top && ptrY < rect.bottom) {
+                        if (cooldown <= 0) {
+                            core.material.color.setHex(Math.random() * 0xffffff);
+                            toggleBtn.classList.add('btn-active');
+                            setTimeout(() => toggleBtn.classList.remove('btn-active'), 200);
+                            cooldown = 20;
+                        }
+                    }
+                } else {
+                    actionText.innerText = "SCANNING_AR";
+                }
+
+                // ZOOM (Two Hands)
+                if (hands.length === 2) {
+                    const dist = Math.hypot(hands[0][9].x - hands[1][9].x, hands[0][9].y - hands[1][9].y);
+                    sScale += (dist * 5 - sScale) * 0.1;
+                    group.scale.setScalar(sScale);
+                }
+
+                // THE POINTER (Reticle)
+                canvasCtx.beginPath();
+                canvasCtx.arc(pinchPoint.x * canvasElement.width, pinchPoint.y * canvasElement.height, isPinching ? 12 : 25, 0, Math.PI*2);
+                canvasCtx.strokeStyle = "#fff";
+                canvasCtx.lineWidth = 2;
+                canvasCtx.stroke();
+
+            } else {
+                actionText.innerText = "WAITING_FOR_USER";
+            }
+
+            if (cooldown > 0) cooldown--;
+            core.rotation.y += 0.01;
+            ring.rotation.x += 0.02;
+            renderer.render(scene, camera);
+        }
+
+        // --- 3. INITIALIZE ---
+        const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+        hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.8, minTrackingConfidence: 0.8 });
+        hands.onResults(onResults);
+
+        const cam = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({image: videoElement}); },
+            width: 1280, height: 720
+        });
+        cam.start();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
