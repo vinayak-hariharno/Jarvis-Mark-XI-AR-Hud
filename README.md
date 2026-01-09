@@ -37,6 +37,10 @@ A futuristic **Iron Man–inspired AR HUD** built using **MediaPipe Hands + Thre
 🔗 **Live AR HUD:**  
 
 
+
+https://github.com/user-attachments/assets/33bbe80f-05dd-41b7-b5f6-9af9e37fdd5e
+
+
 > ⚠️ **Best experienced on Desktop (Chrome / Edge)**  
 > Camera access required.
 
@@ -44,10 +48,11 @@ A futuristic **Iron Man–inspired AR HUD** built using **MediaPipe Hands + Thre
 
 ## 🖼️ Preview
 
-![HUD Interface](assets/screenshots/hud.png)
-![Hand Tracking](assets/screenshots/hand-tracking.png)
+<img align="left" width="48%" src="assets/screenshots/hub.png">
+<img align="right" width="48%" src="assets/screenshots/hand-tracking.png">
 
----
+<br clear="all">
+
 
 ## 🧩 How It Works
 
