@@ -47,10 +47,10 @@ https://github.com/user-attachments/assets/33bbe80f-05dd-41b7-b5f6-9af9e37fdd5e
 ---
 
 ## 🖼️ Preview
-
+<p alingn="center">
 <img align="left" width="48%" src="assets/screenshots/hub.png">
 <img align="right" width="48%" src="assets/screenshots/hand-tracking.png">
-
+</p>
 <br clear="all">
 
 
