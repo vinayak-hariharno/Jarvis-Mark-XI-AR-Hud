@@ -64,3 +64,40 @@ A futuristic **Iron Man–inspired AR HUD** built using **MediaPipe Hands + Thre
 
 ### 🔄 Rendering Stack
 
+<p>Camera Feed</p>
+↓
+<p>Hand Tracking (MediaPipe)</p>
+↓
+<p>Gesture Mapping</p>
+↓
+<p>Three.js 3D Scene</p>
+↓
+<p>HUD Overlay</p>
+
+--- 
+
+## 🧠 Inspiration
+*Inspired by:*
+
+**Iron Man / J.A.R.V.I.S HUD**<br>
+**Futuristic AR interfaces**<br>
+**Human-Computer Interaction (HCI)**<br>
+**Web-based Augmented Reality**<br>
+
+## 📌 Future Enhancements
+🧤 **Hand mesh depth occlusion**<br>
+🗣️ **Voice commands (Web Speech API)**<br>
+🎮 **Gesture-based UI panels**<br>
+🌐 **WebXR / AR glasses support**<br>
+🧠 **AI assistant overlay**<br>
+
+--- 
+
+## 👤 Author
+**Vinayak Hariharno**<br>
+💻 **Web AR • Computer Vision • Creative Tech**<br>
+🔗 GitHub: https://github.com/vinayak-hariharno<br>
+🔗 LinkedIn: https://www.linkedin.com/in/vinayak-hariharno-a05895326/<br>
+
+<h2 align="center">📜 License</h2>
+<h3 align="center">MIT License © 2026 <br> Free to use, modify & distribure</h3>
